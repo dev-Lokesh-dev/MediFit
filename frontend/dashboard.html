@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: #fff;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        .navbar,
+        .card,
+        .modal-content {
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+        }
+
+        .nav-link,
+        .navbar-brand {
+            color: #fff !important;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .card {
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-primary {
+            background: #764ba2;
+            border: none;
+        }
+
+        .btn-primary:hover {
+            background: #5a3b7a;
+        }
+
+        .schedule-item {
+            background: rgba(255, 255, 255, 0.15);
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar navbar-expand-lg">
+        <div class="container">
+            <a class="navbar-brand" href="#">Dashboard</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link" onclick="filterSchedules('all')">All</a></li>
+                    <li class="nav-item"><a class="nav-link" onclick="filterSchedules('pending')">Pending</a></li>
+                    <li class="nav-item"><a class="nav-link" onclick="filterSchedules('approved')">Approved</a></li>
+                </ul>
+                <button class="btn btn-primary ms-3" data-bs-toggle="modal" data-bs-target="#scheduleModal">
+                    Create Schedule
+                </button>
+            </div>
+        </div>
+    </nav>
+
+
+    <div class="container mt-4">
+        <div class="card p-4">
+            <h3 class="text-center">Medication Schedule</h3>
+            <ul id="scheduleList" class="list-unstyled"></ul>
+        </div>
+    </div>
+
+    <div class="modal fade" id="scheduleModal">
+        <div class="modal-dialog">
+            <div class="modal-content p-3">
+                <div class="modal-header">
+                    <h5 class="modal-title">Create Schedule</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="scheduleForm">
+                        <div class="mb-3"><label class="form-label">Medication Name</label><input type="text"
+                                class="form-control" id="medicationName" required></div>
+                        <div class="mb-3"><label class="form-label">Time</label><input type="time" class="form-control"
+                                id="medicationTime" required></div>
+                        <button type="submit" class="btn btn-primary w-100">Save</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        if (!localStorage.getItem("isLoggedIn")) {
+            alert('Login required');
+            window.location.href = "index.html";
+        }
+
+        const userEmail = localStorage.getItem("userEmail");
+        let schedules = [];
+
+        async function fetchSchedules() {
+            try {
+                const response = await fetch(`http://localhost:5000/api/schedules?email=${userEmail}`);
+                schedules = await response.json();
+                updateScheduleList();
+            } catch (error) {
+                console.error("Error fetching schedules:", error);
+            }
+        }
+
+        document.getElementById("scheduleForm").addEventListener("submit", async function (event) {
+            event.preventDefault();
+            const name = document.getElementById("medicationName").value;
+            const time = document.getElementById("medicationTime").value;
+
+            if (name && time) {
+                try {
+                    const response = await fetch("http://localhost:5000/api/schedules", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ email: userEmail, title: name, time, status: "pending" })
+                    });
+                    const newSchedule = await response.json();
+                    schedules.push(newSchedule.schedule);
+                    updateScheduleList();
+                    document.getElementById("scheduleForm").reset();
+                    bootstrap.Modal.getInstance(document.getElementById('scheduleModal')).hide();
+                } catch (error) {
+                    console.error("Error creating schedule:", error);
+                }
+            }
+        });
+
+        async function markAsTaken(index) {
+            try {
+                const schedule = schedules[index];
+                const response = await fetch(`http://localhost:5000/api/schedules/${schedule._id}`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ email: localStorage.getItem("userEmail") })
+                });
+
+                if (response.ok) {
+                    schedules[index].status = "completed";
+                    updateScheduleList();
+                }
+            } catch (error) {
+                console.error("Error updating schedule:", error);
+            }
+        }
+
+
+        function updateScheduleList(filter = "all") {
+            const scheduleList = document.getElementById("scheduleList");
+            scheduleList.innerHTML = schedules
+                .filter(schedule => filter === "all" || schedule.status === filter)
+                .map((schedule, index) => `
+                    <li class="schedule-item">
+                        ${schedule.title} - ${schedule.time} 
+                        <span class='badge ${schedule.status === "pending" ? "bg-warning" : "bg-success"}'>
+                            ${schedule.status === "pending" ? "Pending" : "Taken"}
+                        </span>
+                        ${schedule.status === "pending" ? `<button class='btn btn-success btn-sm' onclick='markAsTaken(${index})'>Mark as Taken</button>` : ""}
+                    </li>
+                `).join('');
+        }
+
+        function filterSchedules(filter) {
+            if (filter === "approved") filter = "completed";
+            updateScheduleList(filter);
+        }
+
+
+        fetchSchedules();
+    </script>
+</body>
+
+</html>
