@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Doctor Chat</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <style>
+        body { 
+            background: linear-gradient(135deg, #667eea, #764ba2); 
+            font-family: Arial, sans-serif;
+        }
+        .chat-container { 
+            max-width: 600px; 
+            margin: 50px auto; 
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            padding: 20px;
+        }
+        .chat-box { 
+            height: 400px; 
+            overflow-y: auto; 
+            border-radius: 10px; 
+            padding: 15px; 
+            background: #1e1e1e;
+            display: flex;
+            flex-direction: column;
+        }
+        .message { 
+            margin-bottom: 15px; 
+            padding: 10px 15px; 
+            border-radius: 15px; 
+            max-width: 80%;
+            word-wrap: break-word;
+            display: inline-block;
+            color: white;
+        }
+        .user { 
+            align-self: flex-end; 
+            background: #007bff; 
+            text-align: right;
+        }
+        .ai { 
+            align-self: flex-start; 
+            background: #34c759;
+            text-align: left;
+        }
+        .input-group input {
+            border-radius: 20px;
+        }
+        .btn-primary {
+            border-radius: 20px;
+            padding: 8px 20px;
+            transition: 0.3s;
+        }
+        .btn-primary:hover {
+            background-color: #0056b3;
+        }
+        @media (max-width: 768px) {
+            .chat-container {
+                width: 90%;
+                margin-top: 20px;
+            }
+            .chat-box {
+                height: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container chat-container">
+        <h2 class="text-center text-primary">AI Doctor Assistant</h2>
+        <div class="chat-box" id="chatBox"></div>
+        <div class="input-group mt-3">
+            <input type="text" id="userInput" class="form-control" placeholder="Describe your symptoms..." onkeypress="handleKeyPress(event)">
+            <button class="btn btn-primary" onclick="sendMessage()">Get Medicine</button>
+        </div>
+        <div class="text-center mt-3">
+            <a href="dashboard.html" class="btn btn-secondary">Dashboard</a>
+        </div>
+    </div>
+
+    <script>
+        const API_KEY = "AIzaSyBQHrFiH67ss2yiA_HgnjiUXsNMq-LukAE";
+        const chatBox = document.getElementById("chatBox");
+
+        function handleKeyPress(event) {
+            if (event.key === "Enter") sendMessage();
+        }
+
+        async function sendMessage() {
+            const userInput = document.getElementById("userInput");
+            const message = userInput.value.trim();
+            if (!message) return;
+
+            chatBox.innerHTML += `<div class="message user"><strong>You:</strong> ${message}</div>`;
+            chatBox.scrollTop = chatBox.scrollHeight;
+            userInput.value = "";
+
+            try {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ 
+                        contents: [{ parts: [{ text: `You are an AI doctor. When a user describes their symptoms, respond only with medicine and explain how many days you have to take. Do not add any other information.
+                        User's symptoms: ${message}` }] }]
+                    })
+                });
+
+                const data = await response.json();
+                if (data.candidates && data.candidates.length > 0) {
+                    const aiResponse = data.candidates[0].content.parts[0].text;
+                    chatBox.innerHTML += `<div class="message ai"><strong>Doctor:</strong> ${aiResponse}</div>`;
+                } else {
+                    chatBox.innerHTML += `<div class="message ai text-danger"><strong>Doctor:</strong> Error: No response</div>`;
+                }
+                chatBox.scrollTop = chatBox.scrollHeight;
+            } catch (error) {
+                console.error("Error:", error);
+                chatBox.innerHTML += `<div class="message ai text-danger"><strong>Doctor:</strong> Error occurred</div>`;
+            }
+        }
+
+        window.onload = async function() {
+            try {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ 
+                        contents: [{ parts: [{ text: "You are a doctor AI. Only reply with medicine names, dosage, and duration for given symptoms. Do not provide extra details." }] }]
+                    })
+                });
+
+                const data = await response.json();
+                if (data.candidates && data.candidates.length > 0) {
+                    chatBox.innerHTML += `<div class="message ai"><strong>Doctor:</strong> Hello! I am your AI doctor. Tell me your symptoms, and I will suggest the right medicine, dosage, and duration for you.</div>`;
+                } else {
+                    chatBox.innerHTML += `<div class="message ai text-danger"><strong>Doctor:</strong> Error initializing chat</div>`;
+                }
+            } catch (error) {
+                console.error("Error:", error);
+                chatBox.innerHTML += `<div class="message ai text-danger"><strong>Doctor:</strong> Failed to start chat</div>`;
+            }
+        };
+    </script>
+
+</body>
+</html>

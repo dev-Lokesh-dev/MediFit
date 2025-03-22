@@ -102,8 +102,43 @@
         </div>
     </div>
 
+    <div class="modal fade" id="welcomeModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content p-3">
+                <div class="modal-header">
+                    <h5 class="modal-title">Welcome!</h5>
+                </div>
+                <div class="modal-body text-center">
+                    <p>Get a free solution for your disease. Chat with our experts now!</p>
+                    <p id="countdown">Redirecting in 5...</p>
+                    <button class="btn btn-primary" onclick="redirectToAI()">chat with doctor</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+
+document.addEventListener("DOMContentLoaded", function() {
+            let welcomeModal = new bootstrap.Modal(document.getElementById('welcomeModal'));
+            welcomeModal.show();
+            
+            let countdown = 5;
+            let countdownElement = document.getElementById("countdown");
+            let countdownInterval = setInterval(() => {
+                countdown--;
+                countdownElement.textContent = `Redirecting in ${countdown}...`;
+                if (countdown === 0) {
+                    clearInterval(countdownInterval);
+                    welcomeModal.hide();
+                }
+            }, 1000);
+        });
+        
+        function redirectToAI() {
+            window.location.href = "ai.html";
+        }
         if (!localStorage.getItem("isLoggedIn")) {
             alert('Login required');
             window.location.href = "index.html";
